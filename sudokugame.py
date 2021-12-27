@@ -39,6 +39,7 @@ grid2 = []
 grid_pos = (75, 100)
 cell_size = 50
 grid_size = cell_size*9
+past_time = 0
 
 
 
@@ -95,10 +96,11 @@ def run():
             playing_update()
             playing_draw()
         ticks=pygame.time.get_ticks()
+        ticks = ticks - past_time
         millis=ticks%1000
         seconds=int(ticks/1000 % 60)
-        minutes=int(ticks/60000 % 24)
-        hours = int(minutes/60)
+        minutes=int(ticks/60000 % 60)
+        hours = int(ticks/3600000 % 24)
         current_time=f'{hours:02d}:{minutes:02d}:{seconds:02d}'
     pygame.quit()
     sys.exit()
@@ -354,22 +356,24 @@ def is_int(string):
         return False
 
 def get_puzzle(diff):
-    global grid2, finished_board, reset_board, current_text
+    global grid2, finished_board, reset_board, current_text, past_time
     puzzle = Sudoku(3).difficulty(diff)
     reset_board = Sudoku(3).difficulty(diff).board
     grid2 = puzzle.board
     finished_board = puzzle.solve().board
     current_text="New Puzzle"
+    past_time = pygame.time.get_ticks()
     load()
 
 def reset(): 
-    global grid2, reset_board
+    global grid2, reset_board, past_time
     grid2 = reset_board
+    past_time = pygame.time.get_ticks()
     load()
 
 
 def get_puzzle_from_file():
-    global grid2, finished_board, current_text
+    global grid2, finished_board, current_text, past_time
 
     Tk().withdraw() 
     filename = askopenfilename()
@@ -402,7 +406,7 @@ def get_puzzle_from_file():
         current_text="Invalid Puzzle"
         grid2 = finished_board
 
-       
+    past_time = pygame.time.get_ticks() 
     load()
     run()
 
