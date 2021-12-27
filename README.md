@@ -1,4 +1,8 @@
 pip install -r requirements.txt
 (In your virtual environment)
 
-python SophiasSudoku.py
+python sudokugame.py
+
+
+if tkinter throws up an error
+pip install tk
