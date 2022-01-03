@@ -1,8 +1,16 @@
-pip install -r requirements.txt
+# **Sudoku Game made with py-sudoku and py-game**
+
+# Installation
+- `pip install -r requirements.txt`\
 (In your virtual environment)
 
-python sudokugame.py
+# Initialization
+- `python sudokugame.py`
 
+# Errors
+>If tkinter throws up an error
 
-if tkinter throws up an error
-pip install tk
+- `pip install tk`
+
+# Notes
+> Load file won't work on a Mac, Since it cannot open pygame and tkinter simultaneously 
