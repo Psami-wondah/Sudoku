@@ -34,7 +34,7 @@ INCORRECTCELLCOLOUR = (195, 121, 121)
 finished_board = []
 reset_board = []
 grid2 = []
-
+di = None
 #positions and sizes
 grid_pos = (75, 100)
 cell_size = 50
@@ -356,24 +356,29 @@ def is_int(string):
         return False
 
 def get_puzzle(diff):
-    global grid2, finished_board, reset_board, current_text, past_time
+    global grid2, finished_board, current_text, past_time, di, puzzle_file
     puzzle = Sudoku(3).difficulty(diff)
-    reset_board = Sudoku(3).difficulty(diff).board
-    grid2 = puzzle.board
+    di= diff
     finished_board = puzzle.solve().board
+    grid2 = puzzle.board
     current_text="New Puzzle"
+    puzzle_file = False
     past_time = pygame.time.get_ticks()
     load()
 
 def reset(): 
-    global grid2, reset_board, past_time
-    grid2 = reset_board
+    global grid2, reset_board, past_time, cell_changed, di
+    if puzzle_file:
+        grid2 = reset_board
+    else:
+        grid2 = Sudoku(3).difficulty(di).board
     past_time = pygame.time.get_ticks()
     load()
 
 
+
 def get_puzzle_from_file():
-    global grid2, finished_board, current_text, past_time
+    global grid2, finished_board, current_text, past_time, puzzle_file, reset_board
 
     Tk().withdraw() 
     filename = askopenfilename()
@@ -401,6 +406,8 @@ def get_puzzle_from_file():
     if valid_board:
         grid2 = puzzle.board
         current_text="Puzzle Loaded Succesfully"
+        puzzle_file = True
+        reset_board = puzzle.board
         
     else:
         current_text="Invalid Puzzle"
