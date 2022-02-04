@@ -7,10 +7,13 @@ py-sudoku
 
 """
 import pygame, sys
-from sudoku import Sudoku
+# from sudoku import Sudoku
 from tkinter import Tk     # from tkinter import Tk for Python 3.x
 from tkinter.filedialog import askopenfilename
 import random
+import sudoku
+
+new_game = sudoku.Sudoku(3)
 
 # wrong_sudoc = "/Users/progressive/Desktop/Projects/sudoku/Sudoku game/sudoc.txt"
 # correct_sudoc = "/Users/progressive/Desktop/Projects/sudoku/Sudoku game/correct_sudoc.txt"
@@ -26,13 +29,25 @@ HEIGHT = 600
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 LIGHTBLUE = (96, 216, 232)
+RED = (255, 50, 50)
+YELLOW = (255, 255, 0)
+GREEN = (0, 255, 50)
+BLUE = (50, 50, 255)
+GREY = (200, 200, 200)
+ASH = (225, 225, 237)
+ORANGE = (200, 100, 50)
+CYAN = (0, 255, 255)
+MAGENTA = (255, 0, 255)
+TRANS = (1, 1, 1)
 LOCKEDCELLCOLOUR = (189, 189, 189)
 INCORRECTCELLCOLOUR = (195, 121, 121)
+PURPLE = (128,0,128)
 
 #Boards
 
 finished_board = []
 reset_board = []
+reset_board_2 = None
 grid2 = []
 di = None
 #positions and sizes
@@ -40,8 +55,10 @@ grid_pos = (75, 100)
 cell_size = 50
 grid_size = cell_size*9
 past_time = 0
-
-
+slider_val = 0.1
+current_diff = 0.1
+confirm_state = "reject"
+recent_text = ""
 
 #app_class
 
@@ -71,12 +88,13 @@ current_time = "00:00:00"
 
 
 def init():
-    global font
+    global font, slider_font
     pygame.init()
     pygame.font.init()
     pygame.display.set_caption("Sophia's Sudoku")
     font = pygame.font.SysFont('Comic Sans MS', cell_size//1)
-    get_puzzle(0.5)
+    slider_font = pygame.font.SysFont('Verdana', 10, bold=1)
+    get_puzzle()
     load()
     run()
     
@@ -109,6 +127,8 @@ def run():
 
 ###### PLAYING STATE FUNCTIONS ######
 def playing_events():
+    global slider_val, slider_maxi, slider_mini, slider_xpos, slider_ypos, slider_hit
+    global slider_surf, slider_button_surf, slider_button_rect
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             global running
@@ -125,12 +145,12 @@ def playing_events():
                 selected = None
                 if button_highlighted:
                     button_click()
-                if button2_highlighted:
-                    button2_click()
-                if button3_highlighted:
-                    button3_click()
-                if button4_highlighted:
-                    button4_click()
+                # if button2_highlighted:
+                #     button2_click()
+                # if button3_highlighted:
+                #     button3_click()
+                # if button4_highlighted:
+                #     button4_click()
                 if button5_highlighted:
                     button5_click()
                 if button6_highlighted:
@@ -141,6 +161,16 @@ def playing_events():
                     button8_click()
                 if button9_highlighted:
                     button9_click()
+                if button10_highlighted:
+                    button10_click()
+                if button11_highlighted:
+                    button11_click()   
+            pos = pygame.mouse.get_pos()
+            if slider_button_rect.collidepoint(pos):
+                slider_hit = True
+        elif event.type == pygame.MOUSEBUTTONUP:
+                slider_hit = False
+            
         #User Types a key
         if event.type == pygame.KEYDOWN:
             if selected and selected not in locked_cells:
@@ -148,20 +178,24 @@ def playing_events():
                     grid2[selected[1]][selected[0]] = int(event.unicode)
                     global cell_changed
                     cell_changed = True
+        if slider_hit:
+            slider_move()
 
 
 def playing_update():
     global mouse_pos
     mouse_pos = pygame.mouse.get_pos()
     button_update(mouse_pos)
-    button2_update(mouse_pos)
-    button3_update(mouse_pos)
-    button4_update(mouse_pos)
+    # button2_update(mouse_pos)
+    # button3_update(mouse_pos)
+    # button4_update(mouse_pos)
     button5_update(mouse_pos)
     button6_update(mouse_pos)
     button7_update(mouse_pos)
     button8_update(mouse_pos)
     button9_update(mouse_pos)
+    button10_update(mouse_pos)
+    button11_update(mouse_pos)
 
     if cell_changed:
         global incorrect_cells
@@ -179,16 +213,22 @@ def playing_draw():
     window.fill(WHITE)
 
     button_draw(window)
-    button2_draw(window)
-    button3_draw(window)
-    button4_draw(window)
+    # button2_draw(window)
+    # button3_draw(window)
+    # button4_draw(window)
     button5_draw(window)
     button6_draw(window)
     button7_draw(window)
     button8_draw(window)
     button9_draw(window)
-    print_text(current_text)
+
+    slider_draw(window)
+    print_text(current_text, 100, 560)
     print_time(current_time)
+
+    if confirm_state == "confirm":
+        button10_draw(window)
+        button11_draw(window)
 
     if selected:
         draw_selection(window, selected)
@@ -201,6 +241,8 @@ def playing_draw():
     pygame.display.update()
     global cell_changed
     cell_changed = False
+
+
 
 ###### PLAYING STATE FUNCTIONS ######
 
@@ -249,10 +291,10 @@ def draw_selection(wind, pos):
     pygame.draw.rect(wind, LIGHTBLUE, ((pos[0]*cell_size)+grid_pos[0], (pos[1]*cell_size)+grid_pos[1], cell_size, cell_size))
 
 def draw_grid(wind):
-    pygame.draw.rect(wind, BLACK, (grid_pos[0], grid_pos[1], WIDTH-150, HEIGHT-150), 2)
+    pygame.draw.rect(wind, PURPLE, (grid_pos[0], grid_pos[1], WIDTH-150, HEIGHT-150), 4)
     for x in range(9):
-        pygame.draw.line(wind, BLACK, (grid_pos[0]+(x*cell_size), grid_pos[1]), (grid_pos[0]+(x*cell_size), grid_pos[1]+450), 2 if x%3 == 0 else 1)
-        pygame.draw.line(wind, BLACK, (grid_pos[0], grid_pos[1]+(x*cell_size)), (grid_pos[0]+450, grid_pos[1]+(x*cell_size)), 2 if x%3 == 0 else 1)
+        pygame.draw.line(wind, PURPLE if x%3 == 0 else BLACK, (grid_pos[0]+(x*cell_size), grid_pos[1]), (grid_pos[0]+(x*cell_size), grid_pos[1]+450), 4 if x%3 == 0 else 1)
+        pygame.draw.line(wind, PURPLE if x%3 == 0 else BLACK, (grid_pos[0], grid_pos[1]+(x*cell_size)), (grid_pos[0]+450, grid_pos[1]+(x*cell_size)), 4 if x%3 == 0 else 1)
 
 def mouse_on_grid():
     if mouse_pos[0] < grid_pos[0] or mouse_pos[1] < grid_pos[1]:
@@ -261,35 +303,64 @@ def mouse_on_grid():
         return False
     return ((mouse_pos[0] - grid_pos[0])//cell_size, (mouse_pos[1]-grid_pos[1])//cell_size)
 
+def slider_move():
+    global slider_val, slider_maxi, slider_mini, slider_xpos, slider_ypos, slider_hit
+    global slider_surf, slider_button_surf, current_diff
+    """
+    The dynamic part; reacts to movement of the slider button.
+    """
+    slider_val = (pygame.mouse.get_pos()[0] - slider_xpos - 10) / 180 * (slider_maxi - slider_mini) + slider_mini
+    if slider_val < slider_mini:
+        slider_val = slider_mini
+    if slider_val > slider_maxi:
+        slider_val = slider_maxi
+    current_diff = slider_val
+
+def button10_init(x, y, width, height, text= None, colour=(73,73,73), highlighted_colour = (189,189,189), function=None, params=None):
+    global button10_image, button10_pos, button10_rect, button10_text, button10_colour, button10_highlighted_colour
+    global button10_function, button10_params, button10_highlighted, button10_width, button10_height
+    button10_image = pygame.Surface((width, height))
+    button10_pos = (x,y)
+    button10_rect = button10_image.get_rect()
+    button10_rect.topleft = button10_pos
+    button10_text = text
+    button10_colour = colour
+    button10_highlighted_colour = highlighted_colour
+    button10_function = function
+    button10_params = params
+    button10_highlighted = False
+    button10_width = width
+    button10_height = height
+
 def load_buttons():
+    global slider_val, current_diff
     button_init(20, 50, WIDTH//8, 30, 
                 function=check_all_cells,
                 colour=(225, 225, 237),
                 text='Check'
     )
-    button2_init(100, 50, WIDTH//8, 30, 
-                function=get_puzzle,
-                colour=(225, 225, 237),
-                params=0.2,
-                text='Easy'
-    )
-    button3_init(180, 50, WIDTH//8, 30, 
-                function=get_puzzle,
-                colour=(225, 225, 237),
-                params=0.4,
-                text='Medium'
-    )
-    button4_init(WIDTH//2-(WIDTH//7)//2, 50, WIDTH//8, 30, 
-                function=get_puzzle,
-                colour=(225, 225, 237),
-                params=0.6,
-                text='Hard'
-    )
+    # button2_init(100, 50, WIDTH//8, 30, 
+    #             function=get_puzzle,
+    #             colour=(225, 225, 237),
+    #             params=0.2,
+    #             text='Easy'
+    # )
+    # button3_init(180, 50, WIDTH//8, 30, 
+    #             function=get_puzzle,
+    #             colour=(225, 225, 237),
+    #             params=0.4,
+    #             text='Medium'
+    # )
+    # button4_init(WIDTH//2-(WIDTH//7)//2, 50, WIDTH//8, 30, 
+    #             function=get_puzzle,
+    #             colour=(225, 225, 237),
+    #             params=0.6,
+    #             text='Hard'
+    # )
     button5_init(340, 50, WIDTH//8, 30, 
-                function=get_puzzle,
+                function=confirm,
                 colour=(225, 225, 237),
-                params=0.8,
-                text='Evil'
+                text='Start'
     )
     button6_init(420, 50, WIDTH//8, 30, 
                 function=show_solution,
@@ -314,6 +385,17 @@ def load_buttons():
                 text='Load File'
     )
 
+    button10_init(420, 560, WIDTH//8, 30, 
+                function=get_puzzle,
+                colour=(225, 225, 237),
+                text='Yes'
+    )
+    button11_init(500, 560, WIDTH//8, 30, 
+                function=reject,
+                colour=(225, 225, 237),
+                text='No'
+    )
+    slider_init("shit", current_diff, 0.9, 0.1, 100)
 def load():
     global locked_cells, incorrect_cells, finished
     load_buttons()
@@ -355,23 +437,45 @@ def is_int(string):
     except:
         return False
 
-def get_puzzle(diff):
-    global grid2, finished_board, current_text, past_time, di, puzzle_file
-    puzzle = Sudoku(3).difficulty(diff)
+def get_puzzle():
+    global grid2, finished_board, current_text, past_time, di, puzzle_file, confirm_state
+    global recent_text, reset_board_2
+    diff = round(current_diff, 1)
+    print(diff)
+    puzzle = new_game.difficulty(diff)
     di= diff
     finished_board = puzzle.solve().board
+    reset_board_2 = puzzle._copy_board(puzzle.board)
+    grid2 = []
     grid2 = puzzle.board
-    current_text="New Puzzle"
+    current_text=f"New Puzzle: Difficulty: {diff}"
+    recent_text = current_text
     puzzle_file = False
     past_time = pygame.time.get_ticks()
+    confirm_state = "reject"
     load()
+
+def confirm():
+    global current_text, confirm_state
+    print(reset_board_2)
+    current_text="Are you sure you want to start a new game?"
+    confirm_state = "confirm"
+
+def reject():
+    global confirm_state, current_text, recent_text
+    confirm_state = "reject"
+    current_text = recent_text
+
+
+
 
 def reset(): 
     global grid2, reset_board, past_time, cell_changed, di
     if puzzle_file:
         grid2 = reset_board
     else:
-        grid2 = Sudoku(3).difficulty(di).board
+        grid2 = []
+        grid2 = reset_board_2
     past_time = pygame.time.get_ticks()
     load()
 
@@ -395,7 +499,7 @@ def get_puzzle_from_file():
             else:
                 row.append(None)
         board.append(row)
-    puzzle = Sudoku(3, 3, board=board)
+    puzzle = sudoku.Sudoku(3, 3, board=board)
     valid_board = False
     finished_board = puzzle.solve().board
     for x in range(9):
@@ -449,21 +553,23 @@ def hint():
 
 
 def real_checker():
+    global incorrect_cells
+    incorrect_cells = []
     for x in range(9):
         for y in range(9):
             if finished_board[x][y] != grid2[x][y]:
                 incorrect_cells.append([y, x])
    
-def print_text(text):
+def print_text(text, x , y ):
     text_width = 300
     text_height = 30
     text_image = pygame.Surface((text_width, text_height))
-    text_pos = (150, 560)
+    text_pos = (x, y)
     text_rect = text_image.get_rect()
     text_rect.topleft = text_pos
     
     text_image.fill((255,255,255))
-    font = pygame.font.SysFont('arial', 15, bold=1)
+    font = pygame.font.SysFont('arial', 13, bold=1)
     textt = font.render(text, False, (0,0,0))
     width, height = textt.get_size()
 
@@ -957,6 +1063,153 @@ def button9_draw_text(text):
 
 
 ##### BUTTON 9 ######
+
+
+
+##### BUTTON 10 #####
+
+
+
+def button10_update(mouse):
+    global button10_highlighted
+    if button10_rect.collidepoint(mouse):
+        button10_highlighted = True
+    else:
+        button10_highlighted = False
+
+def button10_draw(wind):
+    global button10_image
+    button10_image.fill(button10_highlighted_colour if button10_highlighted else button10_colour)
+    if button10_text:
+        button10_draw_text(button10_text)
+    wind.blit(button10_image, button10_pos)
+
+def button10_click():
+    if button10_params:
+        button10_function(button10_params)
+    else:
+        button10_function()
+
+def button10_draw_text(text):
+    global button10_image
+    font = pygame.font.SysFont('arial', 10, bold=1)
+    text = font.render(text, False, (0,0,0))
+    width, height = text.get_size()
+    x = (button10_width-width)//2
+    y = (button10_height-height)//2
+    button10_image.blit(text, (x, y))
+
+##### BUTTON 10 #####
+
+
+
+
+##### BUTTON 11 #####
+
+def button11_init(x, y, width, height, text= None, colour=(73,73,73), highlighted_colour = (189,189,189), function=None, params=None):
+    global button11_image, button11_pos, button11_rect, button11_text, button11_colour, button11_highlighted_colour
+    global button11_function, button11_params, button11_highlighted, button11_width, button11_height
+    button11_image = pygame.Surface((width, height))
+    button11_pos = (x,y)
+    button11_rect = button11_image.get_rect()
+    button11_rect.topleft = button11_pos
+    button11_text = text
+    button11_colour = colour
+    button11_highlighted_colour = highlighted_colour
+    button11_function = function
+    button11_params = params
+    button11_highlighted = False
+    button11_width = width
+    button11_height = height
+
+def button11_update(mouse):
+    global button11_highlighted
+    if button11_rect.collidepoint(mouse):
+        button11_highlighted = True
+    else:
+        button11_highlighted = False
+
+def button11_draw(wind):
+    global button11_image
+    button11_image.fill(button11_highlighted_colour if button11_highlighted else button11_colour)
+    if button11_text:
+        button11_draw_text(button11_text)
+    wind.blit(button11_image, button11_pos)
+
+def button11_click():
+    if button11_params:
+        button11_function(button11_params)
+    else:
+        button11_function()
+
+def button11_draw_text(text):
+    global button11_image
+    font = pygame.font.SysFont('arial', 10, bold=1)
+    text = font.render(text, False, (0,0,0))
+    width, height = text.get_size()
+    x = (button11_width-width)//2
+    y = (button11_height-height)//2
+    button11_image.blit(text, (x, y))
+
+##### BUTTON 11 #####
+
+
+##### SLIDER ########
+
+def slider_init(name, val, maxi, mini, pos):
+
+    global slider_val, slider_maxi, slider_mini, slider_xpos, slider_ypos, slider_hit
+    global slider_surf, slider_button_surf, slider_font
+    slider_val = val  # start value
+    slider_maxi = maxi  # maximum at slider position right
+    slider_mini = mini  # minimum at slider position left
+    slider_xpos = pos  # x-location on screen
+    slider_ypos = 45
+    slider_surf = pygame.surface.Surface((200, 50))
+    slider_hit = False  # the hit attribute indicates slider movement due to mouse interaction
+    font = pygame.font.SysFont('Verdana', 10, bold=1)
+    slider_txt_surf = font.render("Easy", False, BLACK)
+    slider_txt_surf2 = font.render("Hard", False, BLACK)
+
+    # Static graphics - slider background #
+    slider_surf.fill(ASH)
+    pygame.draw.rect(slider_surf, GREY, [0, 0, 200, 50], 3)
+    # pygame.draw.rect(slider_surf, ORANGE, [10, 10, 180, 10], 0)
+    pygame.draw.rect(slider_surf, WHITE, [10, 30, 180, 5], 0)
+
+    slider_surf.blit(slider_txt_surf, (10, 10)) 
+    slider_surf.blit(slider_txt_surf2, (160, 10)) # this surface never changes
+
+    # dynamic graphics - button surface #
+    slider_button_surf = pygame.surface.Surface((20, 20))
+    slider_button_surf.fill(ASH)
+    slider_button_surf.set_colorkey(ASH)
+    pygame.draw.circle(slider_button_surf, WHITE, (10, 10), 6, 0)
+    pygame.draw.circle(slider_button_surf, BLACK, (10, 10), 4, 0)
+
+def slider_draw(window):
+    global slider_val, slider_maxi, slider_mini, slider_xpos, slider_ypos, slider_hit
+    global slider_surf, slider_button_surf, slider_button_rect
+    """ Combination of static and dynamic graphics in a copy of
+    the basic slide surface
+    """
+    # static
+    surf = slider_surf.copy()
+
+    # dynamic
+    pos = (10+int((slider_val-slider_mini)/(slider_maxi-slider_mini)*180), 33)
+    slider_button_rect = slider_button_surf.get_rect(center=pos)
+    surf.blit(slider_button_surf, slider_button_rect)
+    slider_button_rect.move_ip(slider_xpos, slider_ypos)  # move of button box to correct screen position
+
+    # screen
+    window.blit(surf, (slider_xpos, slider_ypos))
+
+
+    
+
+
+##### SLIDER #########
 
 
 # MAIN 
